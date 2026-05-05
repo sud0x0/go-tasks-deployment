@@ -152,11 +152,14 @@ fetch_secrets() {
   JWT=$(vault_get api/jwt)
 
   local keys="$ETC_DIR/jwt-keys"
-  jq -r '.private_key' <<<"$JWT" | $SUDO tee "$keys/private.pem" >/dev/null
-  jq -r '.public_key'  <<<"$JWT" | $SUDO tee "$keys/public.pem"  >/dev/null
-  $SUDO chown "$GOTASKS_USER:$GOTASKS_USER" "$keys"/*.pem
-  $SUDO chmod 600 "$keys/private.pem"
-  $SUDO chmod 644 "$keys/public.pem"
+  # install(1) sets owner+mode atomically - avoids a user-shell glob over
+  # $keys (mode 750, owned by gotasks) which the operator can't traverse.
+  local jwt_tmp; jwt_tmp=$(mktemp)
+  jq -r '.private_key' <<<"$JWT" > "$jwt_tmp"
+  $SUDO install -o "$GOTASKS_USER" -g "$GOTASKS_USER" -m 600 "$jwt_tmp" "$keys/private.pem"
+  jq -r '.public_key' <<<"$JWT" > "$jwt_tmp"
+  $SUDO install -o "$GOTASKS_USER" -g "$GOTASKS_USER" -m 644 "$jwt_tmp" "$keys/public.pem"
+  rm -f "$jwt_tmp"
 
   local env_tmp; env_tmp=$(mktemp)
   {
