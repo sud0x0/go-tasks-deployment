@@ -1,0 +1,9 @@
+CLAUDE.md
+.claude/
+*.pem
+*.key
+vault-auth.env
+.DS_Store
+*.swp
+.idea/
+.vscode/
