@@ -84,7 +84,10 @@ setup_dirs() {
   fi
 
   # First-run placeholder so the operator knows where to drop AppRole creds.
-  if [[ ! -f "$VAULT_AUTH_FILE" ]]; then
+  # $SUDO test - $ETC_DIR is mode 750 owned by gotasks, so a non-root operator
+  # can't traverse it and a bare [[ -f ]] would falsely report "missing" and
+  # clobber the operator's edits on every re-run.
+  if ! $SUDO test -f "$VAULT_AUTH_FILE"; then
     $SUDO tee "$VAULT_AUTH_FILE" >/dev/null <<'EOF'
 # AppRole credentials for the go-tasks-eso role in Vault.
 VAULT_ROLE_ID=
@@ -430,8 +433,8 @@ setup_dirs
 configure_firewall
 configure_valkey
 
-if ! grep -q '^VAULT_ROLE_ID=..*' "$VAULT_AUTH_FILE" 2>/dev/null; then
-  die "edit $VAULT_AUTH_FILE with your AppRole RoleID + SecretID, then re-run"
+if ! $SUDO grep -q '^VAULT_ROLE_ID=..*' "$VAULT_AUTH_FILE" 2>/dev/null; then
+  die "edit $VAULT_AUTH_FILE (sudo vim) with your AppRole RoleID + SecretID, then re-run"
 fi
 
 fetch_secrets

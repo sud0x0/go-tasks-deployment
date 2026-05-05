@@ -64,7 +64,7 @@ ERROR: edit /etc/go-tasks/vault-auth.env with your AppRole RoleID + SecretID, th
 Paste the AppRole creds:
 
 ```bash
-sudo nano /etc/go-tasks/vault-auth.env
+sudo vim /etc/go-tasks/vault-auth.env
 # VAULT_ROLE_ID=<paste>
 # VAULT_SECRET_ID=<paste>
 ```
