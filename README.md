@@ -2,10 +2,10 @@
 
 Single-script native installers for `go-tasks`. Two flavours, pick one:
 
-| Script                     | Target                | DB location | Secrets source                                |
-| -------------------------- | --------------------- | ----------- | --------------------------------------------- |
-| `install-rockylinux.sh`    | Rocky Linux 10        | remote      | HashiCorp Vault (AppRole)                     |
-| `install-debian.sh`        | Debian / Ubuntu       | local       | interactive prompts on first run              |
+| Script                  | Target          | DB location | Secrets source                   |
+| ----------------------- | --------------- | ----------- | -------------------------------- |
+| `install-rockylinux.sh` | Rocky Linux 10  | remote      | HashiCorp Vault (AppRole)        |
+| `install-debian.sh`     | Debian / Ubuntu | local       | interactive prompts on first run |
 
 No containers in either — Caddy + Valkey/Redis + the Go binaries run directly under systemd.
 
@@ -105,21 +105,21 @@ Answers persist to `/etc/go-tasks/install.env`. Subsequent runs are non-interact
 
 Both scripts share the same backbone — the differences are in how they get DB credentials, where Postgres lives, and a few packaging details:
 
-| Step                      | `install-rockylinux.sh`                                        | `install-debian.sh`                                          |
-| ------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------ |
-| 1. Packages               | `dnf` + EPEL + PGDG (`postgresql${PG_CLIENT_VERSION}` client only) + Caddy from COPR + Valkey | `apt-get` + Caddy from cloudsmith + Postgres + Valkey or Redis (whichever is available) |
-| 2. User / dirs / firewall | `gotasks` user, `/opt/go-tasks`, `/etc/go-tasks`, firewalld 80/443/8080 | same dirs, ufw 80/443/8080                                   |
-| 3. Cache                  | valkey on 127.0.0.1                                            | valkey or redis on 127.0.0.1                                 |
-| 4. Postgres               | n/a (remote DB)                                                | initialise local cluster, create user + DB                   |
-| 5. JWT keys               | fetched from Vault                                             | generated locally with openssl on first run                  |
-| 6. `api.env`              | written from Vault secrets                                     | written from `install.env` answers                           |
-| 7. Releases               | latest `go-tasks-api` + `go-tasks-database-migrator` + `go-tasks-ui` from GitHub, SHA-256 verified, staged in a temp dir | identical                                                    |
-| 8. systemd + Caddyfile    | `tls internal`                                                 | `tls internal` if `ACME_EMAIL` is blank, otherwise Let's Encrypt |
-| 9. Migrator binary        | installed before migrations run                                | identical                                                    |
-| 10. `pg_dump` backup      | to `/var/backups/go-tasks/`                                    | identical                                                    |
-| 11. `migrator up`         | runs against remote DB                                         | runs against local DB                                        |
-| 12. API binary + UI swap  | only after migrations succeed                                  | identical                                                    |
-| 13. Enable + start        | `valkey caddy go-tasks-api`                                    | `postgresql valkey-server caddy go-tasks-api`                |
+| Step                      | `install-rockylinux.sh`                                                                                                  | `install-debian.sh`                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| 1. Packages               | `dnf` + EPEL + PGDG (`postgresql${PG_CLIENT_VERSION}` client only) + Caddy from COPR + Valkey                            | `apt-get` + Caddy from cloudsmith + Postgres + Valkey or Redis (whichever is available) |
+| 2. User / dirs / firewall | `gotasks` user, `/opt/go-tasks`, `/etc/go-tasks`, firewalld 80/443/8080                                                  | same dirs, ufw 80/443/8080                                                              |
+| 3. Cache                  | valkey on 127.0.0.1                                                                                                      | valkey or redis on 127.0.0.1                                                            |
+| 4. Postgres               | n/a (remote DB)                                                                                                          | initialise local cluster, create user + DB                                              |
+| 5. JWT keys               | fetched from Vault                                                                                                       | generated locally with openssl on first run                                             |
+| 6. `api.env`              | written from Vault secrets                                                                                               | written from `install.env` answers                                                      |
+| 7. Releases               | latest `go-tasks-api` + `go-tasks-database-migrator` + `go-tasks-ui` from GitHub, SHA-256 verified, staged in a temp dir | identical                                                                               |
+| 8. systemd + Caddyfile    | `tls internal`                                                                                                           | `tls internal` if `ACME_EMAIL` is blank, otherwise Let's Encrypt                        |
+| 9. Migrator binary        | installed before migrations run                                                                                          | identical                                                                               |
+| 10. `pg_dump` backup      | to `/var/backups/go-tasks/`                                                                                              | identical                                                                               |
+| 11. `migrator up`         | runs against remote DB                                                                                                   | runs against local DB                                                                   |
+| 12. API binary + UI swap  | only after migrations succeed                                                                                            | identical                                                                               |
+| 13. Enable + start        | `valkey caddy go-tasks-api`                                                                                              | `postgresql valkey-server caddy go-tasks-api`                                           |
 
 ## Step 3 — Verify
 
@@ -234,7 +234,3 @@ Debian only (set on the command line to skip a prompt, or persist via `install.e
 - **API on 8080 is firewalled open**, so direct API access bypassing Caddy works for tools that don't speak the local TLS root.
 - **The migrator and the api read the same `DB_*` env set** (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_SSLMODE`) — both sourced from `/etc/go-tasks/api.env`.
 - **Migrations run before the api binary is swapped.** If a migration fails, `set -e` exits before the new api binary moves into place; the running api keeps serving on its old binary, the pre-migration `pg_dump` is in `/var/backups/go-tasks/`, and `migrator up` is idempotent so re-running picks up where you left off.
-
-## License
-
-[MIT](LICENSE).
